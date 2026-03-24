@@ -23,6 +23,9 @@ include(asv_cmake_defaults)
 asv_cmake_defaults( )
 ###############
 
+# Build shared library (needed for linking into dstng_postgres.so)
+set(BUILD_SHARED_LIBS ON)
+
 # Generate a "compilation database" so we can use run-clang-tidy, to run static
 # checks in parallel.
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
