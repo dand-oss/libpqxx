@@ -941,6 +941,13 @@ public:
 
   //@}
 
+  /// Get raw libpq connection handle for direct libpq calls.
+  /// ASI extension — not in upstream libpqxx.
+  constexpr internal::pq::PGconn *asi_raw_connection() const noexcept
+  {
+    return m_conn;
+  }
+
   /// Suffix unique number to name to make it unique within session context.
   /** Used internally to generate identifiers for SQL objects (such as cursors
    * and nested transactions) based on a given human-readable base name.
