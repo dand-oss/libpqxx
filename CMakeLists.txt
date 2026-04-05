@@ -32,7 +32,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 option(BUILD_DOC "Build documentation" OFF)
 
 if(NOT SKIP_BUILD_TEST AND CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
-    option(BUILD_TEST "Build all test cases" ON)
+    option(BUILD_TEST "Build all test cases" OFF)
 endif()
 
 # TODO: Enable PQXX_HAVE_STACKTRACE if appropriate.
