@@ -11,6 +11,22 @@ if(NOT PostgreSQL_FOUND)
     endif()
 endif()
 
+# ASI: on Windows, link EDB's static libpq (libpq.a + libpgcommon/libpgport)
+# into pqxx.dll, on the ports OpenSSL (ssl-jp -asv DLLs), instead of importing
+# EDB's libpq.dll and its stock-named libssl-3-x64.dll/libcrypto-3-x64.dll.
+# pqxx is then the only WinGLUE module with libpq in it.
+if(WIN32)
+    find_package(OpenSSL 3.5.8 EXACT CONFIG REQUIRED
+        PATHS ${ASV_PLAT_PORTS}/ssl-jp NO_DEFAULT_PATH)
+    set(ASV_PQXX_STATIC_LIBPQ "")
+    foreach(_asv_pg_lib IN ITEMS libpq libpgcommon_shlib libpgport_shlib)
+        find_library(ASV_PQXX_${_asv_pg_lib} NAMES ${_asv_pg_lib}.a
+            PATHS ${PostgreSQL_LIBRARY_DIRS} NO_DEFAULT_PATH REQUIRED)
+        list(APPEND ASV_PQXX_STATIC_LIBPQ ${ASV_PQXX_${_asv_pg_lib}})
+    endforeach()
+    message(STATUS "libpqxx: static libpq ${ASV_PQXX_STATIC_LIBPQ}")
+endif()
+
 # When setting up the include paths, mention the binary tree's include
 # directory *before* the source tree's include directory.  If the source tree
 # happens to contain autoconf-generated config headers, we should still prefer
@@ -25,9 +41,22 @@ macro(LIBRARY_TARGET_SETUP tgt)
         PRIVATE
             ${PostgreSQL_INCLUDE_DIRS}
     )
-    target_link_libraries(${tgt} PRIVATE PostgreSQL::PostgreSQL)
     if(WIN32)
+        # ASI: static EDB libpq + ports OpenSSL; libintl stubs replace EDB's
+        # libintl-9.dll/libiconv-2.dll (libpq messages stay untranslated)
+        target_sources(${tgt} PRIVATE
+            ${PROJECT_SOURCE_DIR}/src/win32/asv_libintl_stubs.cxx)
+        target_link_libraries(${tgt} PRIVATE
+            ${ASV_PQXX_STATIC_LIBPQ}
+            OpenSSL::SSL OpenSSL::Crypto
+            secur32 advapi32 shell32 wldap32
+        )
+        # libpq.a is built /MD (Release CRT); the Debug build uses /MDd
+        target_link_options(${tgt} PRIVATE
+            $<$<CONFIG:Debug>:/NODEFAULTLIB:MSVCRT>)
         target_link_libraries(${tgt} PUBLIC wsock32 ws2_32)
+    else()
+        target_link_libraries(${tgt} PRIVATE PostgreSQL::PostgreSQL)
     endif()
     install(TARGETS ${tgt} EXPORT libpqxx-targets
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
