@@ -941,6 +941,16 @@ void pqxx::connection::prepare(char const definition[], sl loc) &
 }
 
 
+// ASI: describe a prepared statement's result columns without executing it
+pqxx::result pqxx::connection::describe_prepared(char const name[], sl loc)
+{
+  auto const q{std::make_shared<std::string>(
+    std::format("[DESCRIBE PREPARED {}]", name))};
+  return make_result(
+    PQdescribePrepared(real_conn(m_conn), name), q, *q, loc);
+}
+
+
 void pqxx::connection::unprepare(std::string_view name, sl loc)
 {
   exec(std::format("DEALLOCATE {}", quote_name(name)), loc);
