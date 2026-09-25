@@ -16,5 +16,9 @@ if(NOT PostgreSQL_FOUND)
     endif()
 endif()
 
-find_dependency(PostgreSQL)
+# ASI: on Windows pqxx.dll has EDB's static libpq inside it (linked PRIVATE),
+# so consumers need no libpq at all
+if(NOT WIN32)
+    find_dependency(PostgreSQL)
+endif()
 include("${CMAKE_CURRENT_LIST_DIR}/libpqxx-targets.cmake")
