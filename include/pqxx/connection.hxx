@@ -957,6 +957,23 @@ public:
 #include "pqxx/internal/ignore-deprecated-post.hxx"
   }
 
+  /// ASI: describe a prepared statement without executing it.
+  /** Wraps libpq's `PQdescribePrepared`.  The result has no rows; its
+   * `columns()`, `column_name()` and `column_type()` describe what executing
+   * the statement would return.  Lets callers stay on the pqxx API instead of
+   * calling libpq directly.
+   *
+   * @param name name of a statement defined with `prepare()`.
+   */
+  PQXX_ZARGS result
+  describe_prepared(char const name[], sl loc = sl::current());
+
+  /// ASI: describe a prepared statement without executing it.
+  result describe_prepared(zview name, sl loc = sl::current())
+  {
+    return describe_prepared(name.c_str(), loc);
+  }
+
   /// Drop prepared statement.
   void unprepare(std::string_view name, sl loc = sl::current());
 
