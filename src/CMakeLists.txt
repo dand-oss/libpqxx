@@ -19,18 +19,32 @@ if(WIN32)
     find_package(OpenSSL 3.5.8 EXACT CONFIG REQUIRED
         PATHS ${ASV_PLAT_PORTS}/ssl-jp NO_DEFAULT_PATH)
     set(ASV_PQXX_STATIC_LIBPQ "")
+    set(ASV_PQXX_STATIC_LIBPQ_DEBUG ON)
     # Names: EDB's MinGW archives (libX.a), then MSVC-built libs from the
     # ASV libpq build (X.lib, or libX.lib without the leading "lib" for the
-    # pgcommon/pgport shlibs)
+    # pgcommon/pgport shlibs). Debug variants carry a _d suffix before the
+    # extension; when all are found, Debug links them and Release links the
+    # release libs. Otherwise the release lib is used for both (EDB case).
     foreach(_asv_pg_lib IN ITEMS libpq libpgcommon_shlib libpgport_shlib)
         set(_asv_pg_names ${_asv_pg_lib}.a ${_asv_pg_lib}.lib)
+        set(_asv_pg_dbg_names ${_asv_pg_lib}_d.a ${_asv_pg_lib}_d.lib)
         if(_asv_pg_lib MATCHES "^libpg")
             string(REGEX REPLACE "^lib" "" _asv_pg_nolib ${_asv_pg_lib})
             list(APPEND _asv_pg_names ${_asv_pg_nolib}.lib)
+            list(APPEND _asv_pg_dbg_names ${_asv_pg_nolib}_d.lib)
         endif()
         find_library(ASV_PQXX_${_asv_pg_lib} NAMES ${_asv_pg_names}
             PATHS ${PostgreSQL_LIBRARY_DIRS} NO_DEFAULT_PATH REQUIRED)
-        list(APPEND ASV_PQXX_STATIC_LIBPQ ${ASV_PQXX_${_asv_pg_lib}})
+        find_library(ASV_PQXX_${_asv_pg_lib}_DEBUG NAMES ${_asv_pg_dbg_names}
+            PATHS ${PostgreSQL_LIBRARY_DIRS} NO_DEFAULT_PATH)
+        if(ASV_PQXX_${_asv_pg_lib}_DEBUG)
+            list(APPEND ASV_PQXX_STATIC_LIBPQ
+                "$<$<CONFIG:Debug>:${ASV_PQXX_${_asv_pg_lib}_DEBUG}>"
+                "$<$<NOT:$<CONFIG:Debug>>:${ASV_PQXX_${_asv_pg_lib}}>")
+        else()
+            set(ASV_PQXX_STATIC_LIBPQ_DEBUG OFF)
+            list(APPEND ASV_PQXX_STATIC_LIBPQ ${ASV_PQXX_${_asv_pg_lib}})
+        endif()
     endforeach()
     message(STATUS "libpqxx: static libpq ${ASV_PQXX_STATIC_LIBPQ}")
 endif()
@@ -60,8 +74,11 @@ macro(LIBRARY_TARGET_SETUP tgt)
             secur32 advapi32 shell32 wldap32
         )
         # libpq.a is built /MD (Release CRT); the Debug build uses /MDd
-        target_link_options(${tgt} PRIVATE
-            $<$<CONFIG:Debug>:/NODEFAULTLIB:MSVCRT>)
+        # Only needed when Debug falls back to the release libs.
+        if(NOT ASV_PQXX_STATIC_LIBPQ_DEBUG)
+            target_link_options(${tgt} PRIVATE
+                $<$<CONFIG:Debug>:/NODEFAULTLIB:MSVCRT>)
+        endif()
         target_link_libraries(${tgt} PUBLIC wsock32 ws2_32)
     else()
         target_link_libraries(${tgt} PRIVATE PostgreSQL::PostgreSQL)
@@ -73,7 +90,8 @@ macro(LIBRARY_TARGET_SETUP tgt)
     )
     get_target_property(name ${tgt} NAME)
     get_target_property(output_name ${tgt} OUTPUT_NAME)
-    if(NOT CMAKE_HOST_WIN32)
+    # Unix-target symlink only; not for Windows targets, including the winx cross build
+    if(NOT WIN32)
         # Create library symlink
         get_target_property(target_type ${tgt} TYPE)
         if(target_type STREQUAL "SHARED_LIBRARY")
