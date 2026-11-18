@@ -25,7 +25,7 @@
 // We're building libpqxx as a shared library.
 #    undef PQXX_LIBEXPORT
 #    define PQXX_LIBEXPORT __declspec(dllexport)
-#    define PQXX_PRIVATE __declspec()
+#    define PQXX_PRIVATE /* private: empty __declspec() is rejected by clang-cl */
 #  endif // PQXX_SHARED
 
 #endif // _WIN32

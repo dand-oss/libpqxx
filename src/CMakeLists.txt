@@ -19,8 +19,16 @@ if(WIN32)
     find_package(OpenSSL 3.5.8 EXACT CONFIG REQUIRED
         PATHS ${ASV_PLAT_PORTS}/ssl-jp NO_DEFAULT_PATH)
     set(ASV_PQXX_STATIC_LIBPQ "")
+    # Names: EDB's MinGW archives (libX.a), then MSVC-built libs from the
+    # ASV libpq build (X.lib, or libX.lib without the leading "lib" for the
+    # pgcommon/pgport shlibs)
     foreach(_asv_pg_lib IN ITEMS libpq libpgcommon_shlib libpgport_shlib)
-        find_library(ASV_PQXX_${_asv_pg_lib} NAMES ${_asv_pg_lib}.a
+        set(_asv_pg_names ${_asv_pg_lib}.a ${_asv_pg_lib}.lib)
+        if(_asv_pg_lib MATCHES "^libpg")
+            string(REGEX REPLACE "^lib" "" _asv_pg_nolib ${_asv_pg_lib})
+            list(APPEND _asv_pg_names ${_asv_pg_nolib}.lib)
+        endif()
+        find_library(ASV_PQXX_${_asv_pg_lib} NAMES ${_asv_pg_names}
             PATHS ${PostgreSQL_LIBRARY_DIRS} NO_DEFAULT_PATH REQUIRED)
         list(APPEND ASV_PQXX_STATIC_LIBPQ ${ASV_PQXX_${_asv_pg_lib}})
     endforeach()

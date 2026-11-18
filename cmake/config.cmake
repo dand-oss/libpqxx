@@ -16,6 +16,11 @@ if(NOT PostgreSQL_FOUND)
             list(GET _pg_dirs 0 PostgreSQL_ROOT)
         endif()
     endif()
+    # ASI: our MSVC-built libpq installs under the ports prefix as postgres/
+    if(NOT PostgreSQL_ROOT AND ASV_PLAT_PORTS
+       AND EXISTS "${ASV_PLAT_PORTS}/postgres/include/libpq-fe.h")
+        set(PostgreSQL_ROOT "${ASV_PLAT_PORTS}/postgres")
+    endif()
     if(NOT PostgreSQL_ROOT AND ASV_PLAT_PORTS)
         set(PostgreSQL_ROOT "${ASV_PLAT_PORTS}")
     endif()

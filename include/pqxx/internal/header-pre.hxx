@@ -53,7 +53,7 @@
 #  define PQXX_CPLUSPLUS __cplusplus
 #endif
 
-#if __has_cpp_attribute(gnu::pure)
+#if (!defined(_MSC_VER) && __has_cpp_attribute(gnu::pure))
 /// Declare function "pure": no side effects, only reads globals and its args.
 /** Be careful with exceptions.  The compiler may elide calls, which may stop
  * an exception from happening; or reorder them, moving a call outside of a
@@ -65,7 +65,7 @@
 #endif
 
 
-#if __has_cpp_attribute(gnu::hot)
+#if (!defined(_MSC_VER) && __has_cpp_attribute(gnu::hot))
 /// Tell the compiler that this function can get called a lot.
 #  define PQXX_HOT [[gnu::hot]]
 #else
@@ -73,7 +73,7 @@
 #endif
 
 
-#if __has_cpp_attribute(gnu::cold)
+#if (!defined(_MSC_VER) && __has_cpp_attribute(gnu::cold))
 /// Tell the compiler to optimise a function for size, not speed.
 #  define PQXX_COLD [[gnu::cold]]
 #else
@@ -81,7 +81,7 @@
 #endif
 
 
-#if __has_cpp_attribute(gnu::always_inline)
+#if (!defined(_MSC_VER) && __has_cpp_attribute(gnu::always_inline))
 /// Never generate an out-of-line version of this inline function.
 #  define PQXX_INLINE_ONLY [[gnu::always_inline]]
 #elif __has_cpp_attribute(msvc::forceinline)
@@ -100,7 +100,7 @@
  * We're only defining this for gcc, since that's the compiler we use for test
  * coverage analysis.
  */
-#if defined(PQXX_COVERAGE) && __has_cpp_attribute(gnu::always_inline)
+#if defined(PQXX_COVERAGE) && (!defined(_MSC_VER) && __has_cpp_attribute(gnu::always_inline))
 #  define PQXX_INLINE_COV [[gnu::always_inline]]
 #else
 #  define PQXX_INLINE_COV /* inline-only on coverage runs */
@@ -111,7 +111,7 @@
 /** Bear in mind that this only works for the specific compilers for which we
  * know non-standard attributes that achieve this.
  */
-#if __has_cpp_attribute(gnu::noinline)
+#if (!defined(_MSC_VER) && __has_cpp_attribute(gnu::noinline))
 #  define PQXX_NOINLINE [[gnu::noinline]]
 #elif __has_cpp_attribute(msvc::noinline)
 #  define PQXX_NOINLINE [[msvc::noinline]]
@@ -120,7 +120,7 @@
 #endif
 
 
-#if __has_cpp_attribute(gnu::returns_nonnull)
+#if (!defined(_MSC_VER) && __has_cpp_attribute(gnu::returns_nonnull))
 /// For functions returning a pointer: the pointer is never null.
 #  define PQXX_RETURNS_NONNULL [[gnu::returns_nonnull]]
 #else
@@ -128,7 +128,7 @@
 #endif
 
 
-#if __has_cpp_attribute(gnu::null_terminated_string_arg)
+#if (!defined(_MSC_VER) && __has_cpp_attribute(gnu::null_terminated_string_arg))
 /// Function argument n (counted starting from 1) is a zero-terminated string.
 #  define PQXX_ZARG(n) [[gnu::null_terminated_string_arg((n))]]
 #else
@@ -156,6 +156,9 @@
 #endif
 
 
+// clang-cl defines _MSC_VER but also reports gnu:: attributes. Those spell as
+// [[gnu::...]] after __declspec(dllimport), which it rejects, so on _MSC_VER
+// fall through to the msvc:: spellings or nothing.
 // Workarounds for Windows
 #ifdef _WIN32
 
