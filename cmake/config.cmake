@@ -1,5 +1,20 @@
 include(CheckFunctionExists)
 include(CMakeFindDependencyMacro)
+# ASI: the winx cross build (Windows target from a Linux host) links only the
+# ASV postgres port's libpq package and fails if it is missing; libpq::libpq
+# carries pgcommon/pgport, the ports OpenSSL and the Windows system libraries.
+# Native Windows MSVC (EDB libpq) and Linux (system libpq) use FindPostgreSQL.
+if(WIN32 AND CMAKE_CROSSCOMPILING)
+    if(NOT ASV_PLAT_PORTS)
+        message(FATAL_ERROR "libpqxx winx build: ASV_PLAT_PORTS is not set")
+    endif()
+    find_package(libpq CONFIG REQUIRED
+        PATHS "${ASV_PLAT_PORTS}/postgres" NO_DEFAULT_PATH)
+    get_target_property(PostgreSQL_INCLUDE_DIRS libpq::libpq
+        INTERFACE_INCLUDE_DIRECTORIES)
+    set(PostgreSQL_FOUND TRUE)
+    message(STATUS "libpqxx: libpq ${libpq_VERSION} package ${libpq_DIR}")
+endif()
 if(NOT PostgreSQL_FOUND)
     # Help FindPostgreSQL locate libpq.
     # Priority: PGDIR env var > Windows I:/t/postgres/<ver> > ASV_PLAT_PORTS
@@ -15,11 +30,6 @@ if(NOT PostgreSQL_FOUND)
             list(SORT _pg_dirs ORDER DESCENDING)
             list(GET _pg_dirs 0 PostgreSQL_ROOT)
         endif()
-    endif()
-    # ASI: our MSVC-built libpq installs under the ports prefix as postgres/
-    if(NOT PostgreSQL_ROOT AND ASV_PLAT_PORTS
-       AND EXISTS "${ASV_PLAT_PORTS}/postgres/include/libpq-fe.h")
-        set(PostgreSQL_ROOT "${ASV_PLAT_PORTS}/postgres")
     endif()
     if(NOT PostgreSQL_ROOT AND ASV_PLAT_PORTS)
         set(PostgreSQL_ROOT "${ASV_PLAT_PORTS}")
@@ -54,7 +64,11 @@ endif()
 # Some of these may require libpq.  Temporarily set CMAKE_REQUIRED_INCLUDES and
 # CMAKE_REQUIRED_LIBRARIES so that they can find the libpq headers and binary.
 set(CMAKE_REQUIRED_INCLUDES ${PostgreSQL_INCLUDE_DIRS})
-set(CMAKE_REQUIRED_LIBRARIES PostgreSQL::PostgreSQL)
+if(libpq_FOUND)
+    set(CMAKE_REQUIRED_LIBRARIES libpq::libpq)
+else()
+    set(CMAKE_REQUIRED_LIBRARIES PostgreSQL::PostgreSQL)
+endif()
 
 # However we'll skip linking; we only need that for one of the checks so we can
 # save some time doing it only incidentally.

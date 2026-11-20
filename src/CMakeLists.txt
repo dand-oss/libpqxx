@@ -15,7 +15,12 @@ endif()
 # into pqxx.dll, on the ports OpenSSL (ssl-jp -asv DLLs), instead of importing
 # EDB's libpq.dll and its stock-named libssl-3-x64.dll/libcrypto-3-x64.dll.
 # pqxx is then the only WinGLUE module with libpq in it.
-if(WIN32)
+if(WIN32 AND libpq_FOUND)
+    # ASV postgres port package: Debug and Release libpq per configuration
+    set(ASV_PQXX_STATIC_LIBPQ libpq::libpq)
+    set(ASV_PQXX_STATIC_LIBPQ_DEBUG ON)
+    message(STATUS "libpqxx: static libpq libpq::libpq")
+elseif(WIN32)
     find_package(OpenSSL 3.5.8 EXACT CONFIG REQUIRED
         PATHS ${ASV_PLAT_PORTS}/ssl-jp NO_DEFAULT_PATH)
     set(ASV_PQXX_STATIC_LIBPQ "")
@@ -70,9 +75,13 @@ macro(LIBRARY_TARGET_SETUP tgt)
             ${PROJECT_SOURCE_DIR}/src/win32/asv_libintl_stubs.cxx)
         target_link_libraries(${tgt} PRIVATE
             ${ASV_PQXX_STATIC_LIBPQ}
-            OpenSSL::SSL OpenSSL::Crypto
-            secur32 advapi32 shell32 wldap32
         )
+        if(NOT libpq_FOUND)
+            target_link_libraries(${tgt} PRIVATE
+                OpenSSL::SSL OpenSSL::Crypto
+                secur32 advapi32 shell32 wldap32
+            )
+        endif()
         # libpq.a is built /MD (Release CRT); the Debug build uses /MDd
         # Only needed when Debug falls back to the release libs.
         if(NOT ASV_PQXX_STATIC_LIBPQ_DEBUG)
